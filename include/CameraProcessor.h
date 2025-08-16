@@ -9,6 +9,7 @@
 #include "GestureRecognizer.h"
 
 #include <opencv2/opencv.hpp>
+#include <opencv2/ximgproc.hpp> 
 #include <thread>
 #include <atomic>
 #include <memory>
@@ -34,6 +35,12 @@ class CameraProcessor{
     private:
         void processFrame(cv::Mat& frame);
         void handleGesture(GestureType gesture);
+        
+        cv::Mat preprocessing(cv::Mat& frame);
+        void initGammaCorrection();
+
+        double m_gamma;
+        cv::Mat m_gammaLut;
 
         CameraConfig m_config;
         std::shared_ptr<SystemState> m_systemState;

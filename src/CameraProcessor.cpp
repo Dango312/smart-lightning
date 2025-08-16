@@ -19,9 +19,19 @@ CameraProcessor::CameraProcessor(
 
     
     int cooldownSec=5;
+    m_gamma = 0.8;
 
     m_cooldownDuration = std::chrono::seconds(cooldownSec);
     m_lastRequestTime = std::chrono::steady_clock::now() - m_cooldownDuration;
+    initGammaCorrection();
+}
+
+void CameraProcessor::initGammaCorrection(){
+    m_gammaLut.create(1, 256, CV_8U);
+    uchar* p = m_gammaLut.ptr();
+    for (int i = 0; i < 256; ++i){
+        p[i] = cv::saturate_cast<uchar>(pow(i / 255.0, m_gamma) * 255.0);
+    }
 }
 
 void CameraProcessor::stop(){
@@ -67,8 +77,9 @@ void CameraProcessor::run(){
         }
         
         {
+            cv::Mat corrected_frame = preprocessing(frame);
             std::lock_guard<std::mutex> lock(m_frameMutex);
-            m_latestFrame = frame.clone();
+            m_latestFrame = corrected_frame.clone();
         }
         processFrame(frame);
 
@@ -78,13 +89,91 @@ void CameraProcessor::run(){
     spdlog::info("Stopping processor for camera  ID: {}", m_config.id);
 }
 
+cv::Mat CameraProcessor::preprocessing(cv::Mat& frame) {
+    int patch_size = 15;
+    float omega = 0.1f;
+    float t_min = 0.1f;
+    double guided_filter_eps = 1e-3; 
+
+    cv::Mat I;
+    frame.convertTo(I, CV_32FC3, 1.0 / 255.0);
+
+    cv::Mat dark_channel;
+    {
+        std::vector<cv::Mat> channels;
+        cv::split(I, channels);
+        dark_channel = cv::min(channels[0], cv::min(channels[1], channels[2]));
+        
+        cv::Mat kernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(patch_size, patch_size));
+        cv::erode(dark_channel, dark_channel, kernel);
+    }
+
+    cv::Scalar A;
+    {
+        cv::Point max_loc;
+        cv::minMaxLoc(dark_channel, nullptr, nullptr, nullptr, &max_loc);
+        
+        A = I.at<cv::Vec3f>(max_loc);
+    }
+    
+    cv::Mat transmission;
+    {
+        cv::Mat im_norm_by_A;
+        cv::divide(I, A, im_norm_by_A);
+        
+        std::vector<cv::Mat> channels;
+        cv::split(im_norm_by_A, channels);
+        transmission = cv::min(channels[0], cv::min(channels[1], channels[2]));
+        
+        cv::Mat kernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(patch_size, patch_size));
+        cv::erode(transmission, transmission, kernel);
+        
+        transmission = 1.0 - omega * transmission;
+    }
+
+    cv::Mat gray;
+    cv::cvtColor(frame, gray, cv::COLOR_BGR2GRAY); 
+    cv::ximgproc::guidedFilter(gray, transmission, transmission, patch_size, guided_filter_eps);
+
+    cv::Mat J;
+    {
+        cv::Mat t;
+        cv::max(transmission, t_min, t);
+        
+        cv::Mat t_3ch;
+        cv::cvtColor(t, t_3ch, cv::COLOR_GRAY2BGR);
+        
+        J = (I - cv::Mat(I.size(), I.type(), A)) / t_3ch + cv::Mat(I.size(), I.type(), A);
+    }
+
+    cv::Mat output;
+    J.convertTo(output, CV_8UC3, 255.0);
+
+    cv::Mat lab;
+    cv::cvtColor(output, lab, cv::COLOR_BGR2Lab);
+    std::vector<cv::Mat> lab_channels(3);
+    cv::split(lab, lab_channels);
+    
+    cv::Ptr<cv::CLAHE> clahe = cv::createCLAHE();
+    clahe->setClipLimit(3.0);
+    clahe->apply(lab_channels[0], lab_channels[0]);
+    
+    cv::merge(lab_channels, lab);
+    cv::cvtColor(lab, output, cv::COLOR_Lab2BGR);
+
+    return output;
+}
+
+
 void CameraProcessor::processFrame(cv::Mat& frame) {
     cv::Rect roiRect(m_config.roi[0], m_config.roi[1], m_config.roi[2], m_config.roi[3]);
     
     cv::rectangle(frame, roiRect, cv::Scalar(255, 255, 0), 2);
     cv::Mat roiFrame = frame(roiRect);
 
-    auto detections = m_humanDetector->detect(roiFrame);
+    cv::Mat corrected_frame = preprocessing(roiFrame);
+
+    auto detections = m_humanDetector->detect(corrected_frame);
     bool humanFound = !detections.empty();
     bool gestureHandled = false;
 

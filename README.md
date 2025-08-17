@@ -4,6 +4,7 @@
 * **cpr** - HTTP запросы [ссылка](https://github.com/libcpr/cpr)
 * **spdlog** - логирование [ссылка](https://github.com/gabime/spdlog)
 * **ONNX Runtime** - для работы нейростей [ссылка](https://github.com/microsoft/onnxruntime/releases/download/v1.22.0/onnxruntime-linux-x64-1.22.0.tgz). 
+* **OpenCV** 
 
 **Важно:** Для работы ONNX необходимо установить и распаковать архив. Укажите путь в 'CMakeLists.txt' в переменной 'ONNXRUNTIME_DIR'.
 

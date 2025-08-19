@@ -75,7 +75,7 @@ bool ConfigManager::isWorkTime() const{
         return currentMinutes >= start && currentMinutes < end;
     }
     else {
-        // Ночной диапазон (перемекает полночь)
+        // Ночной диапазон
         return currentMinutes >= start || currentMinutes < end;
     }
 }

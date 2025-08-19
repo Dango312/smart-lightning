@@ -4,6 +4,8 @@
 #include "spdlog/spdlog.h"
 #include <iostream>
 
+
+
 CameraProcessor::CameraProcessor(
     const CameraConfig& config,
     std::shared_ptr<SystemState> systemState,
@@ -15,7 +17,9 @@ CameraProcessor::CameraProcessor(
         m_httpClient(httpClient),
         m_humanDetector(humanDetector),
         m_gestureRecognizer(gestureRecognizer),
-        m_isRunning(true) {
+        m_isRunning(true),
+        m_lastDetectedGesture(GestureType::NONE),
+        m_gestureCounter(0) {
 
     
     int cooldownSec=5;
@@ -94,12 +98,27 @@ void CameraProcessor::processFrame(cv::Mat& frame) {
             cv::rectangle(frame, absoluteRect, cv::Scalar(0, 255, 0), 2);
             
             GestureType gesture = m_gestureRecognizer->recognize(roiFrame, humanRect);
-            if (gesture != GestureType::NONE) {
+            if (gesture == m_lastDetectedGesture && gesture != GestureType::NONE) {
+                m_gestureCounter++;
+            }
+            else {
+                m_gestureCounter = 1;
+                m_lastDetectedGesture = gesture;
+            }
+
+            if (m_gestureCounter >= GESTURE_CONFIRMATION_FRAMES) {
+                spdlog::info("Camera ID {} | Gesture {}", m_config.id, static_cast<int>(gesture));
                 handleGesture(gesture);
+                m_gestureCounter = 0;
+                m_lastDetectedGesture = GestureType::NONE;
                 gestureHandled = true;
                 break;
             }
         }
+    }
+    else {
+        m_gestureCounter = 0;
+        m_lastDetectedGesture = GestureType::NONE;
     }
 
     if (humanFound && !gestureHandled && m_systemState->getMode() == SystemMode::AUTO){
@@ -128,8 +147,16 @@ void CameraProcessor::handleGesture(GestureType gesture) {
         url = ConfigManager::getInstance().getGestureUrl("system_on");
         break;
 
-    case GestureType::CUSTOM_1:
-        url = ConfigManager::getInstance().getGestureUrl("gesture_1");
+    case GestureType::PEACE:
+        url = ConfigManager::getInstance().getGestureUrl("peace");
+        break;
+
+    case GestureType::THUMBS_UP:
+        url = ConfigManager::getInstance().getGestureUrl("thumbs_up");
+        break;
+
+    case GestureType::THUMBS_DOWN:
+        url = ConfigManager::getInstance().getGestureUrl("thumbs_down");
         break;
 
     default:
@@ -139,5 +166,6 @@ void CameraProcessor::handleGesture(GestureType gesture) {
     if (!url.empty()){
         spdlog::info("Sending gesture action request to {}", url);
         m_httpClient->sendGetRequest(url);
+        m_lastRequestTime = std::chrono::steady_clock::now();
     }
 }

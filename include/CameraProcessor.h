@@ -49,5 +49,9 @@ class CameraProcessor{
 
         std::mutex m_frameMutex;
         cv::Mat m_latestFrame;
+
+        GestureType m_lastDetectedGesture;
+        int m_gestureCounter;
+        const int GESTURE_CONFIRMATION_FRAMES = 5;
 };
 

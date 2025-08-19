@@ -11,4 +11,5 @@ class HttpClient {
     public:
         HttpClient();
         void sendGetRequest(const std::string& url);
+        std::string sendHandData(const std::vector<unsigned char>& imageData);
 };

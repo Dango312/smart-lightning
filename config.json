@@ -24,6 +24,8 @@
   "gesture_actions": {
     "system_off": "http://127.0.0.1/all_off",
     "system_on": "http://127.0.0.1/all_auto",
-    "gesture_1": "http://127.0.0.1/action/gate_open"
+    "peace": "http://127.0.0.1/action/peace",
+    "thumbs_up": "http://127.0.0.1/action/thumbs_up",
+    "thumbs_down": "http://127.0.0.1/action/thumbs_down"
   }
 }

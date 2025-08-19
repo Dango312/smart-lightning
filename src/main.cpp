@@ -13,20 +13,26 @@
 #include <thread>
 #include <vector>
 #include <memory>
+#include <filesystem>
 
 int main(int argc, char** argv) {
+    std::filesystem::path executable_path(argv[0]);
+    std::filesystem::path project_root = executable_path.parent_path().parent_path();
+
+    std::filesystem::path config_path = project_root / "config.json";
+
     spdlog::info("--- Smart Lightning System Starting ---");
     try {
-        ConfigManager::getInstance().load("config.json");
+        ConfigManager::getInstance().load(config_path.string());
         spdlog::info("Configuration loaded successfully");
         auto systemState = std::make_shared<SystemState>(); 
         auto httpClient = std::make_shared<HttpClient>();
         auto humanDetector = std::make_shared<HumanDetector>();
-        auto gestureRecognizer = std::make_shared<GestureRecognizer>();
+        auto gestureRecognizer = std::make_shared<GestureRecognizer>(httpClient);
 
         // Загруза моделей
-        humanDetector->loadModel("models/human_recognizer.onnx"); // Загруза yolo
-        gestureRecognizer->loadModel("models/gesture_recognizer.onnx"); // (ЗАГЛУШКА) Загрузка определителя жестов 
+        humanDetector->loadModel((project_root / "models/human_recognizer.onnx").string()); // Загруза yolo
+        gestureRecognizer->loadModel((project_root / "models/gesture_recognizer.onnx").string()); // Загрузка определителя жестов 
 
         std::vector<std::thread> cameraThreads;
         std::vector<std::unique_ptr<CameraProcessor>> cameraProcessors;

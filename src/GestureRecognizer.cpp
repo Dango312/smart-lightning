@@ -43,41 +43,6 @@ void GestureRecognizer::loadModel(const std::string& path) {
     std::cout << "Loading model from " << path << std::endl;
 }
 
-
-GestureType analyzeKeypoints(const std::vector<Keypoint>& keypoints){
-    if (keypoints.size() < 17){
-        return GestureType::NONE;
-    }
-
-    const float min_confidence = 0.5f;
-
-    // Одна рука поднята
-    bool left_arm_up = keypoints[LEFT_WRIST].point.y < keypoints[LEFT_SHOULDER].point.y && 
-        keypoints[LEFT_WRIST].confidence > min_confidence && 
-        keypoints[LEFT_SHOULDER].confidence > min_confidence;
-    bool right_arm_up = keypoints[RIGHT_WRIST].point.y < keypoints[RIGHT_SHOULDER].point.y && 
-        keypoints[RIGHT_WRIST].confidence > min_confidence && 
-        keypoints[RIGHT_SHOULDER].confidence > min_confidence;
-
-    if (left_arm_up || right_arm_up) {
-        return GestureType::ONE_ARM_UP;
-    }
-
-    // Руки скрещены
-    bool arms_crossed = keypoints[LEFT_WRIST].point.x > keypoints[RIGHT_SHOULDER].point.x &&
-        keypoints[RIGHT_WRIST].point.x < keypoints[LEFT_SHOULDER].point.x && 
-        keypoints[LEFT_WRIST].confidence > min_confidence &&
-        keypoints[RIGHT_WRIST].confidence > min_confidence &&
-        keypoints[LEFT_SHOULDER].confidence > min_confidence &&
-        keypoints[RIGHT_SHOULDER].confidence > min_confidence; 
-
-    if (arms_crossed) {
-        return GestureType::ARMS_CROSSED;
-    }
-
-    return GestureType::NONE;
-}
-
 GestureType GestureRecognizer::recognize(const cv::Mat& frameWithPerson) {
     std::vector<unsigned char> jpegBuffer;
     cv::imencode(".jpg", frameWithPerson, jpegBuffer);

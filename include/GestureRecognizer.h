@@ -30,7 +30,7 @@ class GestureRecognizer {
 
         void loadModel(const std::string& path);
 
-        GestureType recognize(const cv::Mat& frame, const cv::Rect& humanRoi);
+        GestureType recognize(const cv::Mat& frameWithPerson);
     
     private:
         std::filesystem::path m_debugDir;

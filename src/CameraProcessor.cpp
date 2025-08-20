@@ -71,6 +71,7 @@ void CameraProcessor::run(){
         }
         
         {
+            
             std::lock_guard<std::mutex> lock(m_frameMutex);
             m_latestFrame = frame.clone();
         }
@@ -81,6 +82,7 @@ void CameraProcessor::run(){
 
     spdlog::info("Stopping processor for camera  ID: {}", m_config.id);
 }
+
 
 void CameraProcessor::processFrame(cv::Mat& frame) {
     cv::Rect roiRect(m_config.roi[0], m_config.roi[1], m_config.roi[2], m_config.roi[3]);
@@ -97,7 +99,8 @@ void CameraProcessor::processFrame(cv::Mat& frame) {
             cv::Rect absoluteRect = humanRect + cv::Point(roiRect.x, roiRect.y);
             cv::rectangle(frame, absoluteRect, cv::Scalar(0, 255, 0), 2);
             
-            GestureType gesture = m_gestureRecognizer->recognize(roiFrame, humanRect);
+            cv::Mat personFrame = roiFrame(humanRect);
+            GestureType gesture = m_gestureRecognizer->recognize(personFrame);
             if (gesture == m_lastDetectedGesture && gesture != GestureType::NONE) {
                 m_gestureCounter++;
             }

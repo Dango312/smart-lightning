@@ -8,6 +8,7 @@
 #include "HumanDetector.h"
 #include "GestureRecognizer.h"
 
+#include <opencv2/ximgproc.hpp> 
 #include <opencv2/opencv.hpp>
 #include <thread>
 #include <atomic>
@@ -34,7 +35,6 @@ class CameraProcessor{
     private:
         void processFrame(cv::Mat& frame);
         void handleGesture(GestureType gesture);
-
         CameraConfig m_config;
         std::shared_ptr<SystemState> m_systemState;
         std::shared_ptr<HttpClient> m_httpClient;

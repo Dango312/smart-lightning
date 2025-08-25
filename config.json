@@ -1,5 +1,6 @@
 {
   "general": {
+    "device": "cuda",
     "log_level": "info",
     "request_cooldown_seconds": 5
   },

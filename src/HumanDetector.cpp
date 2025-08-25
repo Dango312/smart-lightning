@@ -5,6 +5,7 @@
 #include <onnxruntime_cxx_api.h>
 #include <opencv2/dnn.hpp>
 #include "spdlog/spdlog.h"
+#include "ConfigManager.h"
 
 // --- Параметры модели ---
 const int INPUT_WIDTH = 640;
@@ -22,7 +23,23 @@ HumanDetector::HumanDetector() {
 HumanDetector::~HumanDetector() = default;
 
 void HumanDetector::loadModel(const std::string& path) {
+    std::string device = ConfigManager::getInstance().getDevice();
     m_sessionOptions->SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
+    
+    if (device == "cuda"){
+        OrtCUDAProviderOptions cuda_options{};
+        try{
+            m_sessionOptions->AppendExecutionProvider_CUDA(cuda_options);
+            spdlog::info("Attempting to use CUDA execution provider.");
+        }
+        catch (const Ort::Exception& e) {
+            spdlog::error("Failed to append CUDA  provider. Error {}", e.what());
+        }
+    }
+    else {
+        spdlog::info("Using CPU execution provider");
+    }
+    
     m_session = std::make_unique<Ort::Session>(*m_env, path.c_str(), *m_sessionOptions);
 
     spdlog::info("HumanDetector: loaded model from {}", path);

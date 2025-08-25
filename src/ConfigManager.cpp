@@ -41,7 +41,7 @@ void ConfigManager::load(const std::string& filepath){
             config.videoUrl = camJson.at("video_url").get<std::string>();
             config.APIUrl = camJson.at("APIUrl").get<std::string>();
             config.roi = camJson.at("roi").get<std::vector<int>>();
-            
+            m_device = data.at("general").at("device").get<std::string>();
             m_cameraConfigs.push_back(config);
         } 
 
@@ -58,6 +58,10 @@ void ConfigManager::load(const std::string& filepath){
     catch  (const std::exception& e){
         throw std::runtime_error("ConfigManager: Error processing config data: " + std::string(e.what()));
     }
+}
+
+const std::string& ConfigManager::getDevice() const {
+    return m_device;
 }
 
 bool ConfigManager::isWorkTime() const{

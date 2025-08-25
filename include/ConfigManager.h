@@ -29,7 +29,8 @@ class ConfigManager {
         void operator=(const ConfigManager&) = delete;
 
         void load(const std::string& filepath);
-
+        
+        const std::string& getDevice() const;
         const std::vector<CameraConfig>& getCameraConfigs() const;
 
         bool isWorkTime() const;
@@ -38,7 +39,7 @@ class ConfigManager {
 
     private:
         ConfigManager() = default;
-
+        std::string m_device;
         // Парсинг времени из строки "ЧЧ:MM"
         std::chrono::minutes parseTime(const std::string& timeStr) const;
 

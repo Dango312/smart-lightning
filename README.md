@@ -3,7 +3,7 @@
 ## Зависимости
 * **cpr** - HTTP запросы [ссылка](https://github.com/libcpr/cpr)
 * **spdlog** - логирование [ссылка](https://github.com/gabime/spdlog)
-* **ONNX Runtime** - для работы нейростей [ссылка](https://github.com/microsoft/onnxruntime/releases/download/v1.22.0/onnxruntime-linux-x64-1.22.0.tgz). 
+* **ONNX Runtime** - для работы нейростей [ссылка](https://github.com/microsoft/onnxruntime/releases/download/v1.22.0/onnxruntime-linux-x64-1.22.0.tgz). [cuda](https://github.com/microsoft/onnxruntime/releases/download/v1.22.0/onnxruntime-linux-x64-gpu-1.22.0.tgz)
 * **OpenCV** 
 
 **Важно:** Для работы ONNX необходимо установить и распаковать архив. Укажите путь в 'CMakeLists.txt' в переменной 'ONNXRUNTIME_DIR'.
@@ -17,7 +17,7 @@
     '''
     mkdir build
     cd build
-    cmake ..
+    cmake -DONNXRUNTIME_DIR=/путь/к/onnxruntime ..      Укажите путь к версии с cpu или cuda
     '''
 
 3. **Соберите проект**

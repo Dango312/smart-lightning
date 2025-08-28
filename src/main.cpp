@@ -28,12 +28,17 @@ int main(int argc, char** argv) {
         auto systemState = std::make_shared<SystemState>(); 
         auto httpClient = std::make_shared<HttpClient>();
         auto humanDetector = std::make_shared<HumanDetector>();
-        auto gestureRecognizer = std::make_shared<GestureRecognizer>(httpClient);
+        auto gestureRecognizer = std::make_shared<GestureRecognizer>();
 
         // Загруза моделей
-        humanDetector->loadModel((project_root / "models/human_recognizer.onnx").string()); // Загруза yolo
-        gestureRecognizer->loadModel((project_root / "models/gesture_recognizer.onnx").string()); // Загрузка определителя жестов 
-
+        humanDetector->loadModel((project_root / "models/human_recognizer.onnx").string()); 
+        // Модель для общей позы тела
+        gestureRecognizer->loadBodyPoseModel((project_root / "models/gesture_recognizer.onnx").string()); 
+        // Модель для точек кисти
+        gestureRecognizer->loadHandPoseModel((project_root / "models/hand_model.onnx").string());
+        // Классификатор
+        gestureRecognizer->loadClassifierModel((project_root / "models/gesture_classifier.onnx").string());
+        
         std::vector<std::thread> cameraThreads;
         std::vector<std::unique_ptr<CameraProcessor>> cameraProcessors;
 

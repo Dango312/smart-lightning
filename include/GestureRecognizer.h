@@ -1,12 +1,12 @@
 // GestureRecognizer.h
 
-#pragma once 
+#pragma once
 
 #include <opencv2/opencv.hpp>
-#include "HttpClient.h"
 #include <string>
-#include <chrono>
+#include <vector>
 #include <memory>
+#include <filesystem>
 
 enum class GestureType {
     NONE,
@@ -17,26 +17,47 @@ enum class GestureType {
     THUMBS_DOWN
 };
 
-namespace Ort{
+struct Keypoint {
+    cv::Point2f point;
+    float confidence;
+};
+
+struct RecognitionResult {
+    GestureType finalGesture = GestureType::NONE;
+    std::vector<Keypoint> poseKeypoints;
+    std::vector<Keypoint> leftHandKeypoints;
+    std::vector<Keypoint> rightHandKeypoints;
+};
+
+namespace Ort {
     struct Env;
     struct Session;
     struct SessionOptions;
 }
 
 class GestureRecognizer {
-    public:
-        GestureRecognizer(std::shared_ptr<HttpClient> htttpClient);
-        ~GestureRecognizer();
+public:
+    GestureRecognizer();
+    ~GestureRecognizer();
 
-        void loadModel(const std::string& path);
+    void loadBodyPoseModel(const std::string& path);
+    void loadHandPoseModel(const std::string& path);
+    void loadClassifierModel(const std::string& path);
 
-        GestureType recognize(const cv::Mat& frameWithPerson);
+    RecognitionResult recognize(const cv::Mat& personFrame);
+
+private:
+    std::unique_ptr<Ort::Env> m_bodyPoseEnv;
+    std::unique_ptr<Ort::Session> m_bodyPoseSession;
+    std::unique_ptr<Ort::SessionOptions> m_bodyPoseSessionOptions;
+
+    std::unique_ptr<Ort::Env> m_handPoseEnv;
+    std::unique_ptr<Ort::Session> m_handPoseSession;
+    std::unique_ptr<Ort::SessionOptions> m_handPoseSessionOptions;
+
+    std::unique_ptr<Ort::Env> m_classifierEnv;
+    std::unique_ptr<Ort::Session> m_classifierSession;
+    std::unique_ptr<Ort::SessionOptions> m_classifierSessionOptions;
     
-    private:
-        std::filesystem::path m_debugDir;
-
-        std::shared_ptr<HttpClient> m_httpClient;
-        std::unique_ptr<Ort::Env> m_env;
-        std::unique_ptr<Ort::Session> m_session;
-        std::unique_ptr<Ort::SessionOptions> m_sessionOptions;
+    std::vector<GestureType> m_classMap;
 };

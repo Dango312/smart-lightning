@@ -5,7 +5,6 @@
 #include <iostream>
 
 
-
 CameraProcessor::CameraProcessor(
     const CameraConfig& config,
     std::shared_ptr<SystemState> systemState,
@@ -39,8 +38,7 @@ cv::Mat CameraProcessor::getLatestFrame() {
 
 void CameraProcessor::run(){
     spdlog::info("Starting processor for camera ID: {}", m_config.id);
-
-    // Открытие камеры    
+  
     cv::VideoCapture cap;
     try {
         int cameraIndex = std::stoi(m_config.videoUrl);
@@ -63,19 +61,19 @@ void CameraProcessor::run(){
             continue;
         }
         if (!cap.read(frame) || frame.empty()){
-            // Переподключение, если не может получить кадр
             spdlog::error("Camera ID {} connection lost", m_config.id);
             std::this_thread::sleep_for(std::chrono::seconds(5)); 
             cap.open(m_config.videoUrl);
             continue;
         }
-        
+        cv::flip(frame, frame, 1);
+        processFrame(frame);
         {
             
             std::lock_guard<std::mutex> lock(m_frameMutex);
             m_latestFrame = frame.clone();
         }
-        processFrame(frame);
+        
 
         std::this_thread::sleep_for(std::chrono::milliseconds(30));
     }
@@ -86,49 +84,76 @@ void CameraProcessor::run(){
 
 void CameraProcessor::processFrame(cv::Mat& frame) {
     cv::Rect roiRect(m_config.roi[0], m_config.roi[1], m_config.roi[2], m_config.roi[3]);
-    
     cv::rectangle(frame, roiRect, cv::Scalar(255, 255, 0), 2);
     cv::Mat roiFrame = frame(roiRect);
 
     auto detections = m_humanDetector->detect(roiFrame);
     bool humanFound = !detections.empty();
-    bool gestureHandled = false;
+    bool gestureConfirmedThisFrame = false;
 
-    if (humanFound){
-        for (const auto& humanRect : detections) {
+    if (humanFound) {
+        for (auto humanRect : detections) {
+            humanRect &= cv::Rect(0, 0, roiFrame.cols, roiFrame.rows);
+            if (humanRect.width <= 0 || humanRect.height <= 0) continue;
+            
             cv::Rect absoluteRect = humanRect + cv::Point(roiRect.x, roiRect.y);
-            cv::rectangle(frame, absoluteRect, cv::Scalar(0, 255, 0), 2);
+            //cv::rectangle(frame, absoluteRect, cv::Scalar(0, 255, 0), 2);
             
             cv::Mat personFrame = roiFrame(humanRect);
-            GestureType gesture = m_gestureRecognizer->recognize(personFrame);
-            if (gesture == m_lastDetectedGesture && gesture != GestureType::NONE) {
-                m_gestureCounter++;
+
+            RecognitionResult result = m_gestureRecognizer->recognize(personFrame);
+            GestureType currentGesture = result.finalGesture;
+
+
+            // Отрисовка точек
+            /*
+            cv::Point2f total_offset = (cv::Point2f)absoluteRect.tl();
+            // Точки позы
+            for (const auto& kp : result.poseKeypoints) {
+                if (kp.confidence > 0.5) {
+                    cv::circle(frame, kp.point + total_offset, 3, cv::Scalar(255, 0, 0), -1);
+                }
             }
-            else {
+            // Точки левой руки
+            for (const auto& kp : result.leftHandKeypoints) {
+                if (kp.confidence > 0.5) {
+                    cv::circle(frame, kp.point + total_offset, 3, cv::Scalar(0, 255, 0), -1);
+                }
+            }
+            // Точки правой руки
+            for (const auto& kp : result.rightHandKeypoints) {
+                if (kp.confidence > 0.5) {
+                    cv::circle(frame, kp.point + total_offset, 3, cv::Scalar(0, 0, 255), -1);
+                }
+            }
+            */
+            if (currentGesture == m_lastDetectedGesture && currentGesture != GestureType::NONE) {
+                m_gestureCounter++;
+            } else {
                 m_gestureCounter = 1;
-                m_lastDetectedGesture = gesture;
+                m_lastDetectedGesture = currentGesture;
             }
 
             if (m_gestureCounter >= GESTURE_CONFIRMATION_FRAMES) {
-                spdlog::info("Camera ID {} | Gesture {}", m_config.id, static_cast<int>(gesture));
-                handleGesture(gesture);
+                spdlog::info("Camera ID {} | Gesture {} CONFIRMED.", m_config.id, static_cast<int>(currentGesture));
+                handleGesture(currentGesture);
+                
                 m_gestureCounter = 0;
                 m_lastDetectedGesture = GestureType::NONE;
-                gestureHandled = true;
+                gestureConfirmedThisFrame = true;
                 break;
             }
         }
-    }
-    else {
+    } else {
         m_gestureCounter = 0;
         m_lastDetectedGesture = GestureType::NONE;
     }
 
-    if (humanFound && !gestureHandled && m_systemState->getMode() == SystemMode::AUTO){
+    if (humanFound && !gestureConfirmedThisFrame && m_systemState->getMode() == SystemMode::AUTO) {
         auto now = std::chrono::steady_clock::now();
         if (now > m_lastRequestTime + m_cooldownDuration) {
-            spdlog::info("Camera ID {} | Human detected", m_config.id);
-            m_httpClient->sendGetRequest(m_config.APIUrl);
+            spdlog::info("Camera ID {} | Human detected, no gesture. Sending light ON.", m_config.id);
+            m_httpClient->sendGetRequest(m_config.APIUrl); 
             m_lastRequestTime = now;
         }
     }

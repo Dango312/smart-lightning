@@ -79,9 +79,12 @@ int main(int argc, char** argv) {
         for (const auto& processor: cameraProcessors){
             processor->stop();
         }
-        for (auto& t : cameraThreads) {
-            if (t.joinable()) {
-                t.join();
+        {
+            py::gil_scoped_release release_gil_on_join;
+            for (auto& t : cameraThreads) {
+                if (t.joinable()) {
+                    t.join();
+                }
             }
         }
         cv::destroyAllWindows();

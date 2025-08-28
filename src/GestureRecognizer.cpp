@@ -1,53 +1,26 @@
-// GestureRecognizer.cpp
-
+// src/GestureRecognizer.cpp 
 #include "GestureRecognizer.h"
-#include <iostream>
-#include <onnxruntime_cxx_api.h>
-#include <opencv2/dnn.hpp>
-#include <json.hpp>
-#include <chrono>
-#include <sstream>
-#include <iomanip>
-#include <filesystem>
+#include "wrapper.h"
+#include <map>
+#include <opencv2/opencv.hpp>
+#include <pybind11/gil.h>
 
 
-struct Keypoint {
-    cv::Point2f point;
-    float confidence;
-};
-
-enum COCO_PARTS {
-    LEFT_SHOULDER = 5,
-    RIGHT_SHOULDER = 6,
-    LEFT_ELBOW = 7,
-    RIGHT_ELBOW = 8,
-    LEFT_WRIST = 9,
-    RIGHT_WRIST = 10
-};
-
-const int POSE_INPUT_WIDTH = 640;
-const int POSE_INPUT_HEIGHT = 640;
-const float POSE_CONFIDENCE_THRESHOLD = 0.5f;
-
-
-GestureRecognizer::GestureRecognizer(std::shared_ptr<HttpClient> httpClient) : m_httpClient(httpClient) {
-    m_env = std::make_unique<Ort::Env>(ORT_LOGGING_LEVEL_WARNING, "gesture-recognizer");
-    m_sessionOptions = std::make_unique<Ort::SessionOptions>();
+GestureRecognizer::GestureRecognizer() {
+    m_pyRecognizer = std::make_unique<PythonGestureRecognizer>();
 }
 
 GestureRecognizer::~GestureRecognizer() = default;
 
-void GestureRecognizer::loadModel(const std::string& path) {
-    m_sessionOptions->SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
-    m_session = std::make_unique<Ort::Session>(*m_env, path.c_str(), *m_sessionOptions);
-    std::cout << "Loading model from " << path << std::endl;
-}
-
 GestureType GestureRecognizer::recognize(const cv::Mat& frameWithPerson) {
+    if (frameWithPerson.empty()) {
+        return GestureType::NONE;
+    }
     std::vector<unsigned char> jpegBuffer;
-    cv::imencode(".jpg", frameWithPerson, jpegBuffer);
+    std::vector<int> params = {cv::IMWRITE_JPEG_QUALITY, 90};
+    cv::imencode(".jpg", frameWithPerson, jpegBuffer, params);
 
-    std::string json_response = m_httpClient->sendHandData(jpegBuffer);
+    std::string gesture_str = m_pyRecognizer->recognize(jpegBuffer);
     
     static const std::map<std::string, GestureType> gestureMap = {
         {"NONE", GestureType::NONE},
@@ -58,16 +31,6 @@ GestureType GestureRecognizer::recognize(const cv::Mat& frameWithPerson) {
         {"THUMBS_DOWN", GestureType::THUMBS_DOWN}
     };
 
-    try {
-        auto json = nlohmann::json::parse(json_response);
-        std::string gesture_str = json.at("gesture");
-        auto it = gestureMap.find(gesture_str);
-        if (it != gestureMap.end()) {
-            return it->second;
-        }
-    } catch(const std::exception& e) {
-        
-    }
-    
-    return GestureType::NONE;
+    auto it = gestureMap.find(gesture_str);
+    return (it != gestureMap.end()) ? it->second : GestureType::NONE;
 }

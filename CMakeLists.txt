@@ -7,6 +7,8 @@ find_package(cpr REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(Threads REQUIRED)
 find_package(spdlog REQUIRED)
+find_package(Python 3 REQUIRED COMPONENTS Interpreter Development)
+find_package(pybind11 REQUIRED)
 
 find_package(CUDA)
 if(CUDA_FOUND)
@@ -44,6 +46,7 @@ add_executable(
     src/HttpClient.cpp
     src/GestureRecognizer.cpp
     src/HumanDetector.cpp
+    src/wrapper.cpp
 )
 
 target_link_libraries(
@@ -53,6 +56,8 @@ target_link_libraries(
     Threads::Threads
     ${ONNXRUNTIME_LIBRARY}
     spdlog::spdlog
+    pybind11::embed
+    ${Python_LIBRARIES}
 )
 
 if(CUDA_FOUND)

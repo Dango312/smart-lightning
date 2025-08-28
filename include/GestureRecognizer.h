@@ -23,20 +23,17 @@ namespace Ort{
     struct SessionOptions;
 }
 
+class PythonGestureRecognizer;
+
 class GestureRecognizer {
     public:
-        GestureRecognizer(std::shared_ptr<HttpClient> htttpClient);
+        GestureRecognizer();
         ~GestureRecognizer();
-
-        void loadModel(const std::string& path);
 
         GestureType recognize(const cv::Mat& frameWithPerson);
     
     private:
-        std::filesystem::path m_debugDir;
+        std::unique_ptr<PythonGestureRecognizer> m_pyRecognizer;
 
-        std::shared_ptr<HttpClient> m_httpClient;
-        std::unique_ptr<Ort::Env> m_env;
-        std::unique_ptr<Ort::Session> m_session;
-        std::unique_ptr<Ort::SessionOptions> m_sessionOptions;
+        std::filesystem::path m_debugDir;
 };

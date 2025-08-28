@@ -14,8 +14,13 @@
 #include <vector>
 #include <memory>
 #include <filesystem>
+#include <pybind11/embed.h>
+#include "PythonInterpreterGuard.h"
+
+namespace py = pybind11;
 
 int main(int argc, char** argv) {
+    PythonInterpreterGuard guard;
     std::filesystem::path executable_path(argv[0]);
     std::filesystem::path project_root = executable_path.parent_path().parent_path();
 
@@ -28,18 +33,18 @@ int main(int argc, char** argv) {
         auto systemState = std::make_shared<SystemState>(); 
         auto httpClient = std::make_shared<HttpClient>();
         auto humanDetector = std::make_shared<HumanDetector>();
-        auto gestureRecognizer = std::make_shared<GestureRecognizer>(httpClient);
+        auto gestureRecognizer = std::make_shared<GestureRecognizer>();
 
         // Загруза моделей
         humanDetector->loadModel((project_root / "models/human_recognizer.onnx").string()); // Загруза yolo
-        gestureRecognizer->loadModel((project_root / "models/gesture_recognizer.onnx").string()); // Загрузка определителя жестов 
+        //gestureRecognizer->loadModel((project_root / "models/gesture_recognizer.onnx").string()); // Загрузка определителя жестов 
 
         std::vector<std::thread> cameraThreads;
         std::vector<std::unique_ptr<CameraProcessor>> cameraProcessors;
 
         const auto& cameraConfigs = ConfigManager::getInstance().getCameraConfigs();
         spdlog::info("Found {} cameras", cameraConfigs.size());
-
+        
         for (const auto& camConfig : cameraConfigs) {
             auto processor = std::make_unique<CameraProcessor>(
                 camConfig,
@@ -50,22 +55,24 @@ int main(int argc, char** argv) {
             );
             cameraThreads.emplace_back(&CameraProcessor::run, processor.get());
             cameraProcessors.push_back(std::move(processor));
-        }
+        }  
 
         std::cout << "\n--- System is running ---\n";
-
-        while(true){
-            for(const auto& processor : cameraProcessors){
-                cv::Mat frame = processor->getLatestFrame();
-                if (!frame.empty()){
-                    std::string windowName = "Camera ID " + std::to_string(processor->getConfig().id);
-                    cv::imshow(windowName, frame);
+        {
+            py::gil_scoped_release release_gil;
+            while(true){
+                for(const auto& processor : cameraProcessors){
+                    cv::Mat frame = processor->getLatestFrame();
+                    if (!frame.empty()){
+                        std::string windowName = "Camera ID " + std::to_string(processor->getConfig().id);
+                        cv::imshow(windowName, frame);
+                    }
                 }
-            }
 
-            int key = cv::waitKey(33);
-            if (key == 'q' || key == 27){
-                break;
+                int key = cv::waitKey(33);
+                if (key == 'q' || key == 27){
+                    break;
+                }
             }
         }
 

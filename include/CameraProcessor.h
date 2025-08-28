@@ -53,5 +53,6 @@ class CameraProcessor{
         GestureType m_lastDetectedGesture;
         int m_gestureCounter;
         const int GESTURE_CONFIRMATION_FRAMES = 5;
+
 };
 

@@ -4,3 +4,5 @@ build/
 *.out
 .DS_Store
 gesture_models/
+__ pycache__/
+*.pyc

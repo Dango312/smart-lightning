@@ -10,7 +10,7 @@
 // --- Параметры модели ---
 const int INPUT_WIDTH = 640;
 const int INPUT_HEIGHT = 640;
-const float SCORE_THRESHOLD = 0.5f;
+const float SCORE_THRESHOLD = 0.6f;
 const float NMS_THRESHOLD = 0.45f;
 const float CONFIDENCE_THRESHOLD = 0.45f;
 

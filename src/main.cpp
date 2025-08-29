@@ -40,8 +40,8 @@ int main(int argc, char** argv) {
     std::filesystem::path project_root = executable_path.parent_path().parent_path();
     
     std::filesystem::path config_path = project_root / "config.json";
-    signal(SIGINT, signal_handler);
-    signal(SIGTERM, signal_handler);
+    //signal(SIGINT, signal_handler);
+    //signal(SIGTERM, signal_handler);
     spdlog::info("--- Smart Lightning System Starting ---");
     try {
         ConfigManager::getInstance().load(config_path.string());
@@ -53,7 +53,6 @@ int main(int argc, char** argv) {
 
         // Загруза моделей
         humanDetector->loadModel((project_root / "models/human_recognizer.onnx").string()); // Загруза yolo
-        //gestureRecognizer->loadModel((project_root / "models/gesture_recognizer.onnx").string()); // Загрузка определителя жестов 
 
         std::vector<std::thread> cameraThreads;
         std::vector<std::unique_ptr<CameraProcessor>> cameraProcessors;
@@ -99,9 +98,6 @@ int main(int argc, char** argv) {
         //while(!g_shutdown_flag.load()) {
         //    std::this_thread::sleep_for(std::chrono::milliseconds(100));
         //}
-
-
-
         // Завершение работы
         for (const auto& processor: cameraProcessors){
             processor->stop();
